@@ -1,0 +1,24 @@
+name: reflex-websocket-interface-shared
+version: 0.1.0
+cabal-version: >=1.10
+build-type: Simple
+copyright: 2017 Divam Narula <dfordivam@gmail.com>
+maintainer: Divam Narula <dfordivam@gmail.com>
+author: Divam Narula <dfordivam@gmail.com>
+extra-source-files:
+  README.md
+
+source-repository head
+  type:     git
+  location: https://github.com/dfordivam/reflex-websocket-interface
+
+library
+  hs-source-dirs:      ./.
+  exposed-modules:
+    Reflex.WebSocket.WithWebSocket.Shared
+  other-modules:
+
+  build-depends:
+      base
+  default-language:    Haskell2010
+  ghc-options: -fno-warn-missing-signatures
