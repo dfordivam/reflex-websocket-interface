@@ -28,6 +28,11 @@ library
     , dependent-sum
     , bytestring
     , aeson
+    , mtl
+    , primitive
+    , prim-uniq
+    , containers
+    , reflex-websocket-interface-shared
   default-language:    Haskell2010
   ghc-options: -fno-warn-missing-signatures
 

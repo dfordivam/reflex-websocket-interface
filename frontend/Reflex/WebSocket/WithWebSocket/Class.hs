@@ -15,13 +15,13 @@ import Control.Monad.Trans
 import Control.Monad.Fix
 import Control.Monad.IO.Class
 import Control.Monad.Primitive
-import GHCJS.DOM.Types (MonadJSM)
+--import GHCJS.DOM.Types (MonadJSM)
 
 import Data.Aeson
 
-class ( MonadJSM m
-      , MonadJSM (Performable m)
-      , HasJSContext m
+      --   MonadJSM m
+      -- , MonadJSM (Performable m)
+class ( HasJSContext m
       , PerformEvent t m
       , TriggerEvent t m
       , PostBuild t m

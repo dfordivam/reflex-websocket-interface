@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Reflex.WebSocket.WithWebSocket.Base where
+module Reflex.WebSocket.WithWebSocket.Base
   ( withWSConnection
   ) where
 
