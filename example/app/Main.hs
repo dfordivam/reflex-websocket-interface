@@ -15,8 +15,7 @@ import Reflex.WebSocket.WithWebSocket.Base
 import Reflex.WebSocket.WithWebSocket.Shared
 
 -- Example Code
-type instance WebSocketResponseType String = Char
-type instance WebSocketResponseType Char = [Char]
+import Shared
 
 codeToRun ::
   (WithWebSocket t m)

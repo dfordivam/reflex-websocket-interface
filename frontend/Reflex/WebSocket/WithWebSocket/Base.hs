@@ -6,6 +6,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Reflex.WebSocket.WithWebSocket.Base
   ( withWSConnection
@@ -14,7 +17,8 @@ module Reflex.WebSocket.WithWebSocket.Base
 import Reflex.WebSocket.WithWebSocket.Shared
 import Reflex.WebSocket.WithWebSocket.Class
 
-import Reflex.Dom hiding (Value, Error)
+import Reflex.Dom hiding (WebSocket,Value, Error)
+import qualified Reflex.Dom
 import Control.Monad.Trans
 import Control.Monad.Fix
 import Control.Monad.IO.Class
@@ -31,28 +35,30 @@ import qualified Data.ByteString.Lazy as BSL
 
 import Data.Aeson
 
-type WithWebSocketT t m = RequesterT t HasToJSON HasFromJSON m
+type WithWebSocketT ws t m = RequesterT t (IsWebSocketRequest ws) (IsWebSocketResponse ws) m
 
 instance PrimMonad m =>
-         PrimMonad (WithWebSocketT x m) where
-  type PrimState (WithWebSocketT x m) = PrimState m
+         PrimMonad (WithWebSocketT ws x m) where
+  type PrimState (WithWebSocketT ws x m) = PrimState m
   primitive = lift . primitive
 
 instance (MonadWidget t m, PrimMonad m) =>
-         WithWebSocket t (WithWebSocketT t m) where
+         WithWebSocket ws t (WithWebSocketT ws t m) where
   getWebSocketResponse req = do
-    resp <- requesting $ HasToJSON <$> req
-    return $ (\(HasFromJSON b) -> b) <$> resp
+    resp <- requesting $ getWS <$> req
+    return $ (\(IsWebSocketResponse b) -> b) <$> resp
 
-data HasToJSON a where
-        HasToJSON ::
-            ((FromJSON (WebSocketResponseType a)), ToJSON a) =>
-            a -> HasToJSON a
+getWS :: (WebSocketMessage ws req) => req -> IsWebSocketRequest ws req
+getWS req = IsWebSocketRequest (toSum req)
 
-data HasFromJSON a where
-        HasFromJSON ::
-            (FromJSON (WebSocketResponseType a)) =>
-            (WebSocketResponseType a) -> HasFromJSON a
+data IsWebSocketRequest ws req where
+  IsWebSocketRequest ::
+    (WebSocketMessage ws req) => ws -> IsWebSocketRequest ws req
+
+data IsWebSocketResponse ws req where
+  IsWebSocketResponse ::
+    (WebSocketMessage ws req) =>
+      ResponseT ws req -> IsWebSocketResponse ws req
 
 
 withWSConnection ::
@@ -60,8 +66,8 @@ withWSConnection ::
   => Text -- URL
   -> Event t (Word, Text) -- close event
   -> Bool -- reconnect
-  -> WithWebSocketT t m a
-  -> m (a, WebSocket t)
+  -> WithWebSocketT ws t m a
+  -> m (a, Reflex.Dom.WebSocket t)
 withWSConnection url closeEv reconnect wdgt = do
   rec
     let
@@ -74,50 +80,50 @@ withWSConnection url closeEv reconnect wdgt = do
       sendEv = fst <$> bsAndMapEv
       conf = WebSocketConfig sendEv closeEv reconnect
       -- Is it required to remove old tags?
-      storeTags :: TagMap -> TagMap -> TagMap
+      storeTags :: TagMap ws -> TagMap ws -> TagMap ws
       storeTags = (<>)
     tagsDyn <- foldDyn storeTags Map.empty (snd <$> bsAndMapEv)
     ws <- webSocket url conf
   return (val, ws)
 
-type TagMap = Map String (SomeWithFromJSON (Tag RealWorld))
-type EncodeM = Writer ([ByteString], TagMap)
+type TagMap ws = Map String (SomeWithFromJSON ws (Tag RealWorld))
+type EncodeM ws = Writer ([ByteString], TagMap ws)
 
-data SomeWithFromJSON tag where
-        ThisWithFromJSON ::
-            (FromJSON (WebSocketResponseType t)) =>
-            !(tag t) -> SomeWithFromJSON tag
+data SomeWithFromJSON ws tag where
+  ThisWithFromJSON ::
+    (WebSocketMessage ws req) =>
+    !(tag req) -> SomeWithFromJSON ws tag
 
 doEncode ::
-  DSum (Tag RealWorld) (HasToJSON) -> EncodeM ()
-doEncode (t :=> b@(HasToJSON a)) = do
-  -- Can this be simplified and still compiled
-  let f (t, HasToJSON a) =
-        tell
-          ( [BSL.toStrict $ encode (show t, a)]
-          , Map.singleton (show t) (ThisWithFromJSON t))
-    -- tAndA :: (Tag RealWorld _, _)
-      tAndA = (t, b)
-  f tAndA
+  DSum (Tag RealWorld) (IsWebSocketRequest ws) -> EncodeM ws ()
+doEncode (t :=> b@(IsWebSocketRequest a)) = do
+  let
+    encMes :: IsWebSocketRequest ws req -> Value
+    encMes (IsWebSocketRequest a) = toJSON a
+  tell
+    ( [BSL.toStrict $ encode (show t, encMes b)]
+    , Map.singleton (show t) (ThisWithFromJSON t))
+
 
 -- make a tuple (Tag, Request)
 getRequestBS
   :: (Reflex t)
-  => Event t (DMap (Tag RealWorld) HasToJSON) -> Event t ([ByteString], TagMap)
+  => Event t (DMap (Tag RealWorld) (IsWebSocketRequest ws)) -> Event t ([ByteString], TagMap ws)
 getRequestBS dmapEv = f <$> dmapEv
   where
     f dmap = snd $ runWriter $ mapM_ doEncode (Data.Dependent.Map.toList dmap)
 
 getResponseFromBS
   :: (Reflex t)
-  => Dynamic t TagMap
+  => Dynamic t (TagMap ws)
   -> Event t ByteString
-  -> Event t (DMap (Tag RealWorld) (HasFromJSON))
+  -> Event t (DMap (Tag RealWorld) (IsWebSocketResponse ws))
 getResponseFromBS tagMap bs = fforMaybe inp decodeBSResponse
   where
     inp = attachPromptlyDyn tagMap bs
 
-decodeBSResponse :: (TagMap, ByteString) -> Maybe (DMap (Tag RealWorld) (HasFromJSON))
+decodeBSResponse ::
+  (TagMap ws, ByteString) -> Maybe (DMap (Tag RealWorld) (IsWebSocketResponse ws))
 decodeBSResponse (tagMap,bs) = join $ join $ g <$> taggy
   where
     -- Decode Tag first
@@ -128,13 +134,13 @@ decodeBSResponse (tagMap,bs) = join $ join $ g <$> taggy
     -- Given the tag, decode the rest of value
     g (str, rst) = f <$> t
       where
-        t :: Maybe (SomeWithFromJSON (Tag RealWorld))
+        -- t :: Maybe (SomeWithFromJSON ws (Tag RealWorld))
         t = Map.lookup str tagMap
         f (ThisWithFromJSON t') = decodeValue rst t'
     decodeValue
-      :: (FromJSON (WebSocketResponseType v))
-      => Value -> Tag RealWorld v -> Maybe (DMap (Tag RealWorld) (HasFromJSON))
+      :: (WebSocketMessage ws req)
+      => Value -> Tag RealWorld req -> Maybe (DMap (Tag RealWorld) (IsWebSocketResponse ws))
     decodeValue bs t =
       case fromJSON bs of
         Error _ -> Nothing
-        Success v -> Just (Data.Dependent.Map.singleton t (HasFromJSON v))
+        Success v -> Just (Data.Dependent.Map.singleton t (IsWebSocketResponse v))

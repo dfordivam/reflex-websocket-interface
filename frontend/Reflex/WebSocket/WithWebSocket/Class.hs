@@ -1,5 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Reflex.WebSocket.WithWebSocket.Class where
 
@@ -29,7 +30,7 @@ class ( HasJSContext m
       , MonadHold t m
       , MonadFix m
       ) =>
-      WithWebSocket t m | m -> t where
+      WithWebSocket ws t m | m -> t where
   getWebSocketResponse
-    :: (ToJSON a, FromJSON (WebSocketResponseType a), WithWebSocket t m)
-    => Event t a -> m (Event t (WebSocketResponseType a))
+    :: (WebSocketMessage ws req)
+    => Event t req -> m (Event t (ResponseT ws req))

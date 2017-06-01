@@ -1,5 +1,6 @@
-{ mkDerivation, base, reflex-dom, reflex-websocket-interface
-, reflex-websocket-interface-shared, stdenv
+{ mkDerivation, base, primitive, reflex-dom
+, reflex-websocket-interface, reflex-websocket-interface-shared
+, shared, stdenv
 }:
 mkDerivation {
   pname = "example";
@@ -8,8 +9,8 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
-    base reflex-dom reflex-websocket-interface
-    reflex-websocket-interface-shared
+    base primitive reflex-dom reflex-websocket-interface
+    reflex-websocket-interface-shared shared
   ];
   license = stdenv.lib.licenses.gpl3;
 }
