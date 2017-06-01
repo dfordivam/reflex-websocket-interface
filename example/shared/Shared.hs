@@ -7,15 +7,16 @@ import Reflex.WebSocket.WithWebSocket.Shared
 
 import GHC.Generics
 import Data.Aeson
+import Data.Text
 
-data Request1 = Request1 String
+data Request1 = Request1 Text
   deriving (Generic, Show)
-data Request2 = Request2 (String, String)
+data Request2 = Request2 (Text, Text)
   deriving (Generic, Show)
 
 data Response1 = Response1 Int
   deriving (Generic, Show)
-data Response2 = Response2 String
+data Response2 = Response2 Text
   deriving (Generic, Show)
 
 instance WebSocketMessage Request Request1 where

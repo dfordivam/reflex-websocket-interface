@@ -22,8 +22,10 @@ executable example
   build-depends:       base >=4.9 && <4.10
                       , reflex-dom
                       , primitive
+                      , text
                       , reflex-websocket-interface
                       , reflex-websocket-interface-shared
                       , shared
+
   -- hs-source-dirs:
   default-language:    Haskell2010

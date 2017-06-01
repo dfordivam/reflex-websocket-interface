@@ -10,12 +10,13 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Reflex.WebSocket.WithWebSocket.Base
-  ( withWSConnection
-  ) where
+module Reflex.WebSocket.WithWebSocket.Base where
+  -- ( withWSConnection
+  -- , WithWebSocketT (..)
+  -- ) where
 
 import Reflex.WebSocket.WithWebSocket.Shared
-import Reflex.WebSocket.WithWebSocket.Class
+-- import Reflex.WebSocket.WithWebSocket.Class
 
 import Reflex.Dom hiding (WebSocket,Value, Error)
 import qualified Reflex.Dom
@@ -42,11 +43,15 @@ instance PrimMonad m =>
   type PrimState (WithWebSocketT ws x m) = PrimState m
   primitive = lift . primitive
 
-instance (MonadWidget t m, PrimMonad m) =>
-         WithWebSocket ws t (WithWebSocketT ws t m) where
-  getWebSocketResponse req = do
-    resp <- requesting $ getWS <$> req
-    return $ (\(IsWebSocketResponse b) -> b) <$> resp
+-- instance (MonadWidget t m, PrimMonad m) =>
+--          WithWebSocket ws t (WithWebSocketT ws t m) where
+
+getWebSocketResponse
+  :: (WebSocketMessage ws req, Monad m, Reflex t, PrimMonad m)
+  => Event t req -> WithWebSocketT ws t m (Event t (ResponseT ws req))
+getWebSocketResponse req = do
+  resp <- requesting $ getWS <$> req
+  return $ (\(IsWebSocketResponse b) -> b) <$> resp
 
 getWS :: (WebSocketMessage ws req) => req -> IsWebSocketRequest ws req
 getWS req = IsWebSocketRequest (toSum req)
