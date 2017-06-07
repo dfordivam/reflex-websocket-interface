@@ -34,8 +34,10 @@ handleRequest bstr =
     _ -> error "Cannot decode request"
 
 getResponse' :: Shared.Request -> Value
-getResponse' a@(Req1 r) = toJSON $ getResponse a r
-getResponse' a@(Req2 r) = toJSON $ getResponse a r
+getResponse' a =
+  case a of
+    (Req1 r) -> toJSON $  'c' --getResponse a r
+--getResponse' a@(Req2 r) = toJSON $ getResponse a r
 
 class GetResponse ws a where
   getResponse :: (WebSocketMessage ws a) => ws -> a -> ResponseT ws a

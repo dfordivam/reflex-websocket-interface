@@ -19,6 +19,9 @@ executable server
   main-is:             Main.hs
   -- other-modules:
   -- other-extensions:
+  ghc-options:       -Wall
+ --  -fwarn-incomplete-patterns
+
   build-depends:       base >=4.9 && <4.10
                      , websockets
                      , text
