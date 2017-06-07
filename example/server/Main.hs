@@ -30,9 +30,12 @@ app c = do
 handleRequest :: ByteString -> ByteString
 handleRequest bstr =
   case decodeStrict bstr of
-    (Just (v, Req1 r)) -> toStrict $ encode $ (v :: String, getResponse (Req1 r) r)
-    (Just (v, Req2 r)) -> toStrict $ encode $ (v :: String, getResponse (Req2 r) r)
+    (Just (v, r)) -> toStrict $ encode $ (v :: String, getResponse' r)
     _ -> error "Cannot decode request"
+
+getResponse' :: Shared.Request -> Value
+getResponse' a@(Req1 r) = toJSON $ getResponse a r
+getResponse' a@(Req2 r) = toJSON $ getResponse a r
 
 class GetResponse ws a where
   getResponse :: (WebSocketMessage ws a) => ws -> a -> ResponseT ws a
