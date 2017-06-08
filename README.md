@@ -39,8 +39,11 @@ Implementations
 
 1. typeclassbased -
    This approach uses a user-defined sum-type for requests.
+   
    It solves all the requirements defined above
+   
    This requires a good amount of boilerplate code from user
+   
 
 ```
 
@@ -54,6 +57,27 @@ class ( ToJSON ws
   toSum :: req -> ws
   fromSum :: ws -> Maybe req
 
+```
+The request has to be a sum type like this
+```
+data Request
+  = Req1 Request1
+  | Req2 Request2
+  deriving (Generic, Show)
+```
+And we need to create instances of WebSocketMessage like these
+```
+instance WebSocketMessage Request Request1 where
+  type ResponseT Request Request1 = Response1
+  toSum = Req1
+  fromSum (Req1 r) = Just r
+  fromSum _ = Nothing
+
+instance WebSocketMessage Request Request2 where
+  type ResponseT Request Request2 = Response2
+  toSum = Req2
+  fromSum (Req2 r) = Just r
+  fromSum _ = Nothing
 ```
 
 2.
