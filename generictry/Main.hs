@@ -4,10 +4,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 
 import GHC.Generics
 import Data.Aeson
+import Data.Typeable (Typeable)
 
 data True
 data False
@@ -18,21 +21,22 @@ type family TypeEqF a b where
 
 type TypeNeq a b = TypeEqF a b ~ False
 
-data AorB a b = A a | B b
-  deriving (Generic, Show)
+data a :<|> b = Recurse a | Terminal b
+  deriving (Typeable, Eq, Show, Functor, Traversable, Foldable, Generic)
+infixr 3 :<|>
 
-instance (ToJSON a, ToJSON b) => ToJSON (AorB a b)
+instance (ToJSON a, ToJSON b) => ToJSON (a :<|> b)
 
-class (TypeNeq r a) => WebSockerRequest r a where
+class (TypeNeq r a) => ToSumType r a where
   toSum :: a -> r
 
-instance {-# OVERLAPPABLE #-} (TypeNeq a b, TypeNeq (AorB a b) b) => WebSockerRequest (AorB a b) b where
-  toSum b = B b
+instance {-# OVERLAPPABLE #-} (TypeNeq a b, TypeNeq (a :<|> b) b) => ToSumType (a :<|> b) b where
+  toSum b = Terminal b
 
-instance {-# OVERLAPPABLE #-} (WebSockerRequest a c, TypeNeq (AorB a b) c) => WebSockerRequest (AorB a b) c where
-  toSum c = A (toSum c)
+instance {-# OVERLAPPABLE #-} (ToSumType a c, TypeNeq (a :<|> b) c) => ToSumType (a :<|> b) c where
+  toSum c = Recurse (toSum c)
 
 main = do
-  let ab1 = [A (2 ::Int) , B "dd"]
+  let ab1 = [Recurse (2 ::Int) , Terminal "dd"]
   print (length ab1)
   print $ toJSON ab1
