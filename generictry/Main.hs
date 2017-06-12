@@ -29,12 +29,17 @@ instance (ToJSON a, ToJSON b) => ToJSON (a :<|> b)
 
 class (TypeNeq r a) => ToSumType r a where
   toSum :: a -> r
+  fromSum :: r -> Maybe a
 
 instance {-# OVERLAPPABLE #-} (TypeNeq a b, TypeNeq (a :<|> b) a) => ToSumType (a :<|> b) a where
   toSum a = Terminal a
+  fromSum (Terminal a) = Just a
+  fromSum (Recurse _) = Nothing
 
 instance {-# OVERLAPPABLE #-} (ToSumType b c, TypeNeq (a :<|> b) c) => ToSumType (a :<|> b) c where
   toSum c = Recurse (toSum c)
+  fromSum (Recurse b) = fromSum b
+  fromSum (Terminal _) = Nothing
 
 type MyRequest = Int :<|> Char :<|> Double :<|> ()
 
@@ -45,3 +50,11 @@ main = do
   print $ (toSum (4 :: Int) :: MyRequest)
   print $ (toSum ('c' :: Char) :: MyRequest)
   print $ (toSum (1.2 :: Double) :: MyRequest)
+  print $ ((fromSum (toSum (1.2 :: Double) :: MyRequest)) :: Maybe Double)
+  print $ (fromSum (toSum (4 :: Int) :: MyRequest) :: Maybe Char)
+  print $ (fromSum (toSum (4 :: Int) :: MyRequest) :: Maybe Int)
+  print $ (fromSum (toSum ('c' :: Char) :: MyRequest) :: Maybe Char)
+  print $ (fromSum (toSum ('c' :: Char) :: MyRequest) :: Maybe Int)
+
+class (ToSumType sum req) => WebSocketMessage sum req where
+  type Response sum req
