@@ -1,6 +1,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Shared where
 
 import Reflex.WebSocket.WithWebSocket.Shared
@@ -8,6 +13,8 @@ import Reflex.WebSocket.WithWebSocket.Shared
 import GHC.Generics
 import Data.Aeson
 import Data.Text
+
+type Request = Request1 :<|> Request2 :<|> ()
 
 data Request1 = Request1 Text
   deriving (Generic, Show)
@@ -21,24 +28,10 @@ data Response2 = Response2 Text
 
 instance WebSocketMessage Request Request1 where
   type ResponseT Request Request1 = Response1
-  toSum = Req1
-  fromSum (Req1 r) = Just r
-  fromSum _ = Nothing
 
 instance WebSocketMessage Request Request2 where
   type ResponseT Request Request2 = Response2
-  toSum = Req2
-  fromSum (Req2 r) = Just r
-  fromSum _ = Nothing
 
-data Request
-  = Req1 Request1
-  | Req2 Request2
-  deriving (Generic, Show)
-
-instance ToJSON (Request) where
-    toEncoding = genericToEncoding defaultOptions
-instance FromJSON (Request)
 instance ToJSON (Request1) where
     toEncoding = genericToEncoding defaultOptions
 instance FromJSON (Request1)

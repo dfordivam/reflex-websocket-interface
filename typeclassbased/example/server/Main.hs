@@ -1,6 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Main where
 
@@ -12,6 +14,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
 import Network.WebSockets
 import Data.Aeson
+import Data.Maybe (fromMaybe, catMaybes)
 
 main :: IO ()
 main = runServer "127.0.0.1" 3000 app
@@ -34,16 +37,10 @@ handleRequest bstr =
     _ -> error "Cannot decode request"
 
 getResponse' :: Shared.Request -> Value
-getResponse' a@(Req1 r) =
-  toJSON $ getResponse a r
-getResponse' a@(Req2 r) =
-  toJSON $ getResponse a r
+getResponse' a = head $ catMaybes
+  [(toJSON <$> (getResponse1 <$> fromSum a))
+  ,(toJSON <$> (getResponse2 <$> fromSum a))]
 
-class GetResponse ws a where
-  getResponse :: (WebSocketMessage ws a) => ws -> a -> ResponseT ws a
+getResponse1 (Request1 t) = Response1 (T.length t)
 
-instance GetResponse Shared.Request Request1 where
-  getResponse _ (Request1 t) = Response1 (T.length t)
-
-instance GetResponse Shared.Request Request2 where
-  getResponse _ (Request2 (t1,t2)) = Response2 (t1 <> t2)
+getResponse2 (Request2 (t1,t2)) = Response2 (t1 <> t2)

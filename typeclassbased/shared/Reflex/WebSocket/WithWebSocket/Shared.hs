@@ -3,16 +3,58 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module Reflex.WebSocket.WithWebSocket.Shared where
 
 import Data.Aeson
+import GHC.Generics
+import Data.Aeson
+import Data.Typeable (Typeable)
 
-class ( ToJSON ws
-      , FromJSON ws
-      , ToJSON (ResponseT ws req)
-      , FromJSON (ResponseT ws req)
+-- The websocket is identified by sum type
+-- Sum Type
+-- type MyWebSocketRequest = Int :<|> Char :<|> Double :<|> ()
+class ( ToJSON sum
+      , FromJSON sum
+      , ToJSON (ResponseT sum req)
+      , FromJSON (ResponseT sum req)
+      , ToSumType sum req
       ) =>
-      WebSocketMessage ws req where
-  type ResponseT ws req
-  toSum :: req -> ws
-  fromSum :: ws -> Maybe req
+      WebSocketMessage sum req where
+  type ResponseT sum req
+
+data True
+data False
+
+type family TypeEqF a b where
+  TypeEqF a a = True
+  TypeEqF a b = False
+
+type TypeNeq a b = TypeEqF a b ~ False
+
+data a :<|> b = Terminal a | Recurse b
+  deriving (Typeable, Eq, Show, Functor, Traversable, Foldable, Generic)
+infixr 3 :<|>
+
+instance (ToJSON a, ToJSON b) => ToJSON (a :<|> b)
+instance (FromJSON a, FromJSON b) => FromJSON (a :<|> b)
+
+class (TypeNeq r a) => ToSumType r a where
+  toSum :: a -> r
+  fromSum :: r -> Maybe a
+
+instance {-# OVERLAPPABLE #-} (TypeNeq a b, TypeNeq (a :<|> b) a) => ToSumType (a :<|> b) a where
+  toSum a = Terminal a
+  fromSum (Terminal a) = Just a
+  fromSum (Recurse _) = Nothing
+
+instance {-# OVERLAPPABLE #-} (ToSumType b c, TypeNeq (a :<|> b) c) => ToSumType (a :<|> b) c where
+  toSum c = Recurse (toSum c)
+  fromSum (Recurse b) = fromSum b
+  fromSum (Terminal _) = Nothing
