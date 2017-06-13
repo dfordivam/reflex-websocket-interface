@@ -10,7 +10,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Reflex.WebSocket.WithWebSocket.Shared where
+module Reflex.WebSocket.WithWebSocket.Shared
+  (WebSocketMessage (..)
+  , (:<|>)(..)
+  , toSum
+  , fromSum)
+  where
 
 import Data.Aeson
 import GHC.Generics

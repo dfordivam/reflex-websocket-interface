@@ -10,10 +10,11 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Reflex.WebSocket.WithWebSocket.Base where
-  -- ( withWSConnection
-  -- , WithWebSocketT (..)
-  -- ) where
+module Reflex.WebSocket.WithWebSocket.Base
+  ( withWSConnection
+  , WithWebSocketT
+  , getWebSocketResponse
+  ) where
 
 import Reflex.WebSocket.WithWebSocket.Shared
 -- import Reflex.WebSocket.WithWebSocket.Class
