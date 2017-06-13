@@ -45,7 +45,7 @@ infixr 3 :<|>
 instance (ToJSON a, ToJSON b) => ToJSON (a :<|> b)
 instance (FromJSON a, FromJSON b) => FromJSON (a :<|> b)
 
-class (TypeNeq r a) => ToSumType r a where
+class ToSumType r a where
   toSum :: a -> r
   fromSum :: r -> Maybe a
 
@@ -53,6 +53,10 @@ instance {-# OVERLAPPABLE #-} (TypeNeq a b, TypeNeq (a :<|> b) a) => ToSumType (
   toSum a = Terminal a
   fromSum (Terminal a) = Just a
   fromSum (Recurse _) = Nothing
+
+instance ToSumType a a where
+  toSum a = a
+  fromSum a = Just a
 
 instance {-# OVERLAPPABLE #-} (ToSumType b c, TypeNeq (a :<|> b) c) => ToSumType (a :<|> b) c where
   toSum c = Recurse (toSum c)

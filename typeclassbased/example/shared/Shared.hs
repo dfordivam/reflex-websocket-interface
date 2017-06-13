@@ -14,7 +14,7 @@ import GHC.Generics
 import Data.Aeson
 import Data.Text
 
-type Request = Request1 :<|> Request2 :<|> ()
+type Request = Request1 :<|> Request2
 
 data Request1 = Request1 Text
   deriving (Generic, Show)
