@@ -1,4 +1,5 @@
 { mkDerivation, aeson, base, bytestring
+, reflex-websocket-interface-server
 , reflex-websocket-interface-shared, shared, stdenv, text
 , websockets
 }:
@@ -9,8 +10,8 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
-    aeson base bytestring reflex-websocket-interface-shared shared text
-    websockets
+    aeson base bytestring reflex-websocket-interface-server
+    reflex-websocket-interface-shared shared text websockets
   ];
   license = stdenv.lib.licenses.gpl3;
 }
