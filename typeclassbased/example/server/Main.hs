@@ -46,16 +46,14 @@ getResponse :: Shared.Request -> IO Value
 getResponse r = runHandler r handler
 
 handler =
-  makeHandler getResp1
-  :<&> makeHandler getResp2
-  :<&> makeHandler getResp3
+  h getResp1
+  :<&> h getResp2
+  :<&> h getResp3
 
   where
-  makeHandler
-    :: (WebSocketMessage Shared.Request a, Monad m)
+  h :: (WebSocketMessage Shared.Request a, Monad m)
     => (a -> m (ResponseT Shared.Request a)) -> Handler m Shared.Request a
-  makeHandler = Handler req
-    where req = undefined :: Shared.Request
+  h = makeHandler
 
 getResp1 :: Request1 -> IO Response1
 getResp1 (Request1 t) = return $ Response1 (T.length t)

@@ -6,7 +6,8 @@
 module Reflex.WebSocket.WithWebSocket.Server
   ((:<&>) (..)
   , runHandler
-  , Handler (..))
+  , Handler
+  , makeHandler)
   where
 
 import Reflex.WebSocket.WithWebSocket.Shared
@@ -33,8 +34,8 @@ instance (WebSocketMessage req a) => IsValidHandler m req a (Handler m req a) wh
 runHandler :: (IsValidHandler m req req h) => req -> h -> m Value
 runHandler req h = runHandlerRec req req h
 
--- makeHandler
---   :: (WebSocketMessage req a, Monad m)
---   => (a -> m (ResponseT req a)) -> Handler m req a
--- makeHandler = Handler req
---   where req = undefined :: Shared.Request
+makeHandler
+  :: (WebSocketMessage req a, Monad m)
+  => (a -> m (ResponseT req a)) -> Handler m req a
+makeHandler = Handler req
+  where req = undefined :: req
