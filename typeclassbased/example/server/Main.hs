@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -13,11 +12,7 @@ import Reflex.WebSocket.WithWebSocket.Server
 import qualified Data.Text as T
 import Data.Monoid
 import Shared
-import Data.ByteString (ByteString)
-import Data.ByteString.Lazy (toStrict)
 import Network.WebSockets
-import Data.Aeson
-import Data.Maybe (fromMaybe, catMaybes)
 
 main :: IO ()
 main = runServer "127.0.0.1" 3000 app
@@ -28,22 +23,13 @@ app c = do
         d <- receiveData conn
         print d
         -- let resp = handleRequest d
-        resp <- handleRequest d
+        let r = undefined :: Shared.Request
+        resp <- handleRequest r handler d
         print resp
         sendBinaryData conn resp
         loop
   loop
 
-handleRequest :: ByteString -> IO ByteString
-handleRequest bstr =
-  case decodeStrict bstr of
-    (Just (v, r)) -> do
-      resp <- getResponse r
-      return $ toStrict $ encode $ (v :: String, resp)
-    _ -> error "Cannot decode request"
-
-getResponse :: Shared.Request -> IO Value
-getResponse r = runHandler r handler
 
 handler =
   h getResp1

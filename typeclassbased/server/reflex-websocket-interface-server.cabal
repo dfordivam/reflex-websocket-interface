@@ -3,13 +3,13 @@
 
 name:                reflex-websocket-interface-server
 version:             0.1.0.0
--- synopsis:            
--- description:         
+-- synopsis:
+-- description:
 license:             BSD3
 license-file:        LICENSE
 author:              Divam
 maintainer:          dfordivam@gmail.com
--- copyright:           
+-- copyright:
 category:            Web
 build-type:          Simple
 extra-source-files:  ChangeLog.md
@@ -17,10 +17,11 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Reflex.WebSocket.WithWebSocket.Server
-  -- other-modules:       
+  -- other-modules:
   other-extensions:    TypeOperators, MultiParamTypeClasses, GADTs
   build-depends:       base >=4.9 && <4.10
                       , aeson
+                      , bytestring
                       , reflex-websocket-interface-shared
-  -- hs-source-dirs:      
+  -- hs-source-dirs:
   default-language:    Haskell2010

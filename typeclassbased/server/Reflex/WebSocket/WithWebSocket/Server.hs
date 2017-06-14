@@ -1,17 +1,21 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
 
 module Reflex.WebSocket.WithWebSocket.Server
   ((:<&>) (..)
-  , runHandler
+  , handleRequest
   , Handler
   , makeHandler)
   where
 
 import Reflex.WebSocket.WithWebSocket.Shared
 import Data.Aeson
+
+import Data.ByteString (ByteString)
+import Data.ByteString.Lazy (toStrict)
 
 data a :<&> b = a :<&> b
 infixr 3 :<&>
@@ -39,3 +43,18 @@ makeHandler
   => (a -> m (ResponseT req a)) -> Handler m req a
 makeHandler = Handler req
   where req = undefined :: req
+
+handleRequest
+  :: forall m req h.
+     (FromJSON req, Monad m, IsValidHandler m req req h)
+  => req -> h -> ByteString -> m ByteString
+handleRequest _ handler bstr =
+  case decodeStrict bstr of
+    (Just (v, r)) -> do
+      resp <- getResponse r
+      return $ toStrict $ encode $ (v :: String, resp)
+    _ -> error "Cannot decode request"
+
+  where
+    getResponse :: (Monad m) => req -> m Value
+    getResponse r = runHandler r handler
