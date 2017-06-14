@@ -26,50 +26,25 @@ app c = do
   let loop = do
         d <- receiveData conn
         print d
-        let resp = handleRequest d
+        -- let resp = handleRequest d
+        resp <- handleRequest d
         print resp
         sendBinaryData conn resp
         loop
   loop
 
-handleRequest :: ByteString -> ByteString
+handleRequest :: ByteString -> IO ByteString
 handleRequest bstr =
   case decodeStrict bstr of
-    (Just (v, r)) -> toStrict $ encode $ (v :: String, getResponse' r)
+    (Just (v, r)) -> do
+      resp <- getResponse r
+      return $ toStrict $ encode $ (v :: String, resp)
     _ -> error "Cannot decode request"
 
-getResponse' :: Shared.Request -> Value
-getResponse' a = head $ catMaybes
-  [(toJSON <$> (getResponse1 <$> fromSum a))
-  ,(toJSON <$> (getResponse2 <$> fromSum a))]
+handler = ((Handler getResp1) :<&> (Handler getResp2))
 
-getResponse1 (Request1 t) = Response1 (T.length t)
-
-getResponse2 (Request2 (t1,t2)) = Response2 (t1 <> t2)
-
-data a :<&> b = a :<&> b
-
-data Handler m req a where
-  Handler :: (WebSocketMessage req a, Monad m) =>
-    (req -> a -> m (ResponseT req a )) -> Handler m req a
-
--- Handler m req a -> Handler m req b -> JoinedHandler m req (a :<|> b)
--- Handler m req a -> JoinedHandler m req (b :<|> c) -> JoinedHandler m req (a :<|> (b :<|> c))
-
--- handler :: (WebSocketMessage req a) => (a :<|> b) -> (a -> m (ResponseT req a)) -> m (Maybe Value)
-
--- combinedGetResponse = getResponse1 :<&> getResponse2 :<&> getResponse3
-
--- joinHandler :: (WebSocketMessage req a, WebSocketMessage req b) => (a -> m (ResponseT req a)) :<&> b ->
--- joinHandler (getRespA :<&> (getRespB :<&> other)) = joinHandler other
--- joinHandler (getRespA :<&> (getRespB :<&> other)) = joinHandler other
-
-class IsValidHandler req h where
-
-instance (WebSocketMessage req a
-  , IsValidHandler b c) => IsValidHandler (a :<|> b) ((Handler m req a) :<&> c)
-
-instance (WebSocketMessage req a) => IsValidHandler a (Handler m req a)
+getResponse :: Shared.Request -> IO Value
+getResponse r = runHandlerTop r handler
 
 getResp1 :: Shared.Request -> Request1 -> IO Response1
 getResp1 _ (Request1 t) = return $ Response1 (T.length t)
@@ -77,8 +52,22 @@ getResp1 _ (Request1 t) = return $ Response1 (T.length t)
 getResp2 :: Shared.Request -> Request2 -> IO Response2
 getResp2 _ (Request2 (t1,t2)) = return $ Response2 (t1 <> t2)
 
-runHandler :: (IsValidHandler req h) => req -> h -> m ()
-runHandler = undefined
+data a :<&> b = a :<&> b
 
-runMain :: Shared.Request -> m ()
-runMain val = runHandler val ((Handler getResp1) :<&> (Handler getResp2))
+data Handler m req a where
+  Handler :: (WebSocketMessage req a, Monad m) =>
+    (req -> a -> m (ResponseT req a )) -> Handler m req a
+
+class IsValidHandler m req r h where
+  runHandler :: req -> r -> h -> m Value
+
+instance (WebSocketMessage req a
+  , IsValidHandler m req b c) => IsValidHandler m req (a :<|> b) ((Handler m req a) :<&> c) where
+  runHandler req (Terminal a) ((Handler h) :<&> _) = h req a >>= (\x -> return $ toJSON x)
+  runHandler req (Recurse b) (_ :<&> c) = runHandler req b c
+
+instance (WebSocketMessage req a) => IsValidHandler m req a (Handler m req a) where
+  runHandler req a (Handler h) = h req a >>= (\x -> return $ toJSON x)
+
+runHandlerTop :: (IsValidHandler m req req h) => req -> h -> m Value
+runHandlerTop req h = runHandler req req h
