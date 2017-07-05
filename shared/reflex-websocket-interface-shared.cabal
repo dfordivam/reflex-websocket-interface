@@ -15,7 +15,7 @@ source-repository head
 library
   hs-source-dirs:      ./.
   exposed-modules:
-    Reflex.WebSocket.WithWebSocket.Shared
+    Reflex.Dom.WebSocket.Message
   other-modules:
 
   build-depends:

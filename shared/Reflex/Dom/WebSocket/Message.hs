@@ -10,7 +10,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Reflex.WebSocket.WithWebSocket.Shared
+module Reflex.Dom.WebSocket.Message
   (WebSocketMessage (..)
   , (:<|>)(..)
   , toSum

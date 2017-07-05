@@ -11,8 +11,8 @@ import Control.Monad.IO.Class
 import Control.Monad.Primitive
 
 -- import Reflex.WebSocket.WithWebSocket.Class
-import Reflex.WebSocket.WithWebSocket.Base
-import Reflex.WebSocket.WithWebSocket.Shared
+import Reflex.Dom.WebSocket.Monad
+import Reflex.Dom.WebSocket.Message
 import qualified Data.Text as T
 import Data.Monoid
 

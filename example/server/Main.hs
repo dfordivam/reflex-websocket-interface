@@ -7,8 +7,8 @@
 
 module Main where
 
-import Reflex.WebSocket.WithWebSocket.Shared
-import Reflex.WebSocket.WithWebSocket.Server
+import Reflex.Dom.WebSocket.Server
+import Reflex.Dom.WebSocket.Message
 import qualified Data.Text as T
 import Data.Monoid
 import Shared

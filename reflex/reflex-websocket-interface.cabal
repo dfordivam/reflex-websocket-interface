@@ -6,7 +6,6 @@ copyright: 2017 Divam Narula <dfordivam@gmail.com>
 maintainer: Divam Narula <dfordivam@gmail.com>
 author: Divam Narula <dfordivam@gmail.com>
 extra-source-files:
-  README.md
 
 source-repository head
   type:     git
@@ -15,8 +14,7 @@ source-repository head
 library
   hs-source-dirs:      ./.
   exposed-modules:
-    Reflex.WebSocket.WithWebSocket.Class
-    Reflex.WebSocket.WithWebSocket.Base
+    Reflex.Dom.WebSocket.Monad
   other-modules:
 
   build-depends:

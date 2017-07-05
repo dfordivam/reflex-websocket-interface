@@ -8,7 +8,7 @@
 
 module Shared where
 
-import Reflex.WebSocket.WithWebSocket.Shared
+import Reflex.Dom.WebSocket.Message
 
 import GHC.Generics
 import Data.Aeson

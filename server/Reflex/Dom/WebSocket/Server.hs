@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GADTs #-}
 
-module Reflex.WebSocket.WithWebSocket.Server
+module Reflex.Dom.WebSocket.Server
   ((:<&>) (..)
   , handleRequest
   , Handler
@@ -14,7 +14,7 @@ module Reflex.WebSocket.WithWebSocket.Server
   , makeHandler)
   where
 
-import Reflex.WebSocket.WithWebSocket.Shared
+import Reflex.Dom.WebSocket.Message
 import Data.Aeson
 
 import Data.ByteString (ByteString)

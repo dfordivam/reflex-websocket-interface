@@ -6,14 +6,13 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Reflex.WebSocket.WithWebSocket.Base
+module Reflex.Dom.WebSocket.Monad
   ( withWSConnection
   , WithWebSocketT
   , getWebSocketResponse
   ) where
 
-import Reflex.WebSocket.WithWebSocket.Shared
--- import Reflex.WebSocket.WithWebSocket.Class
+import Reflex.Dom.WebSocket.Message
 
 import Reflex.Dom hiding (WebSocket,Value, Error)
 import qualified Reflex.Dom
