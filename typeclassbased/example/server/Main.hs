@@ -22,24 +22,22 @@ app c = do
   let loop = do
         d <- receiveData conn
         print d
-        -- let resp = handleRequest d
-        let r = undefined :: Shared.Request
-        resp <- handleRequest r handler d
+        resp <- handleRequest handler d
         print resp
         sendBinaryData conn resp
         loop
   loop
 
-
-handler =
+handler :: HandlerWrapper IO Shared.Request
+handler = HandlerWrapper $
   h getResp1
   :<&> h getResp2
   :<&> h getResp3
-
   where
-  h :: (WebSocketMessage Shared.Request a, Monad m)
-    => (a -> m (ResponseT Shared.Request a)) -> Handler m Shared.Request a
-  h = makeHandler
+    h :: (WebSocketMessage Shared.Request a, Monad m)
+      => (a -> m (ResponseT Shared.Request a))
+      -> Handler m Shared.Request a
+    h = makeHandler
 
 getResp1 :: Request1 -> IO Response1
 getResp1 (Request1 t) = return $ Response1 (T.length t)
