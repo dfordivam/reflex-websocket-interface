@@ -6,7 +6,7 @@
 mkDerivation {
   pname = "server";
   version = "0.1.0.0";
-  src = ./.;
+  src = ./server;
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
