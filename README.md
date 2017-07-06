@@ -4,9 +4,16 @@ This repository consists of three packages to be used together, along with refle
 
 ## Highlights
 
-Uses type operators to create the request and `Generic` to avoid writing most of the server side boiler plate code.
+Uses type operators and `Generic` to create the request sum type, and  avoid writing most of the server side boiler plate code.
 
-1. Request -> Response
+`type Request = Request1 :<|> Request2 :<|> Request3`
+
+```
+-- Well almost... see below for exact usage
+handler = handleRequest1 :<&> handleRequest2 :<&> handleRequest3
+```
+
+1. Request <-> Response
 
    Type-checker make sure your client and server APIs are in sync.
 
