@@ -8,18 +8,18 @@ Uses type operators to create the request and `Generic` to avoid writing most of
 
 1. Request -> Response
 
-Type level checks make sure your client side and server side APIs are in sync.
+   Type-checker make sure your client and server APIs are in sync.
 
 2. Completeness of server handler
 
-The Type also make sure that all the requests are handled by the server side code.
+   The Type-checker also make sure that all the requests are handled by the server side code.
 
 3. Client side monadic interface with routing of response event.
 
-In the client application the requests come from different parts of the DOM and their responses need to be routed back to the same place.
-This is all taken care by the library code and the user interface is as simple as calling an API
+   In the client application the requests come from different parts of the DOM and their responses need to be routed back to the same place.
+   This is all taken care by the library code and the user interface is as simple as calling an API
 
-`getResponse :: Event t request -> m (Event t response)`
+   `getResponse :: Event t request -> m (Event t response)`
 
 ## Usage
 
