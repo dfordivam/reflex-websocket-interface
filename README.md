@@ -25,7 +25,9 @@ Uses type operators to create the request and `Generic` to avoid writing most of
 
 See the code in example folder for more details.
 
-1. Create a shared code which has the websocket message type using the package reflex-websocket-interface-shared
+1. Shared code
+
+   Create a shared code which has the websocket message type using the package reflex-websocket-interface-shared
 
    Define the types of all the requests and their corresponding responses.
    Also derive Generic instance  of all the individual request and response types.
@@ -66,7 +68,9 @@ See the code in example folder for more details.
      type ResponseT Request Request3 = Response3
    ```
 
-2. In the reflex application use the reflex-websocket-interface package.
+2. Frontend
+
+   In the reflex application use the reflex-websocket-interface package.
 
    Use the `getWebSocketResponse` API along with the other DomBuilder code to create the widget in the `WithWebSocketT` monad.
 
