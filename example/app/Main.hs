@@ -6,11 +6,10 @@
 
 module Main where
 
-import Reflex.Dom
+import Reflex.Dom.Core
 import Control.Monad.IO.Class
 import Control.Monad.Primitive
 
--- import Reflex.WebSocket.WithWebSocket.Class
 import Reflex.Dom.WebSocket.Monad
 import Reflex.Dom.WebSocket.Message
 import qualified Data.Text as T
@@ -25,12 +24,12 @@ codeToRun
 codeToRun = do
   ev1 <- button "Request1"
   ti1 <- textInput def
-  respEv1 <- getWebSocketResponse (Request1 <$> tagDyn (value ti1) ev1)
+  respEv1 <- getWebSocketResponse (Request1 <$> tagPromptlyDyn (value ti1) ev1)
   widgetHold (text "Waiting for Response1")
-    ((\(Response1 l) -> text ("Length is: " <> (T.pack (show l)))) <$> respEv1)
+    ((\(Response1 l) -> text ("Length is: " <> T.pack (show l))) <$> respEv1)
   ev2 <- button "Request2"
   ti2 <- textInput def
-  respEv2 <- getWebSocketResponse (Request2 <$> tagDyn (zipDyn (value ti1) (value ti2)) ev2)
+  respEv2 <- getWebSocketResponse (Request2 <$> tagPromptlyDyn (zipDyn (value ti1) (value ti2)) ev2)
   widgetHold (text "Waiting for Response2")
     ((\(Response2 t) -> text ("Concat string: " <> t)) <$> respEv2)
   return ()

@@ -14,8 +14,8 @@ module Reflex.Dom.WebSocket.Monad
 
 import Reflex.Dom.WebSocket.Message
 
-import Reflex.Dom hiding (WebSocket,Value, Error)
-import qualified Reflex.Dom
+import Reflex.Dom.Core hiding (WebSocket,Value, Error)
+import qualified Reflex.Dom.Core as Reflex.Dom
 import Control.Monad.Trans
 import Control.Monad.Fix
 import Control.Monad.IO.Class
