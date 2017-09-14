@@ -21,7 +21,7 @@ library
       base
     , text
     , reflex
-    , reflex-dom
+    , reflex-dom-core
     , dependent-map
     , dependent-sum
     , bytestring
