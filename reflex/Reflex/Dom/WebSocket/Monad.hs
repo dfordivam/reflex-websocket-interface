@@ -5,6 +5,19 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+-- The reflex side code need to do the following
+-- 1. Capture all the Requent events
+-- 2. Encode the request to JSON and send on websocket
+--    Tag the request, so that we know the response is for which request
+--
+-- We need the tag to
+--   a. Decode the response ie get the type of the response
+--      - 
+--   b. send the response to the origin of request
+--      - For this we need to store the RequesterDataKey
 
 module Reflex.Dom.WebSocket.Monad
   ( withWSConnection
@@ -16,28 +29,19 @@ import Reflex.Dom.WebSocket.Message
 
 import Reflex.Dom.Core hiding (WebSocket,Value, Error)
 import qualified Reflex.Dom.Core as Reflex.Dom
-import Control.Monad.Trans
-import Control.Monad.Fix
-import Control.Monad.IO.Class
-import Control.Monad.Primitive
-import Data.Unique.Tag
-import Data.Dependent.Map
 import Data.Dependent.Sum
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Control.Monad.Writer
+import Data.Map.Strict (Map)
+import Data.Monoid ((<>))
+import qualified Data.Map.Strict as Map
 import Data.ByteString
-import Data.Text
+import Data.Text (Text)
 import qualified Data.ByteString.Lazy as BSL
+
+import Control.Monad.State.Strict
 
 import Data.Aeson
 
 type WithWebSocketT ws t m = RequesterT t (IsWebSocketRequest ws) (IsWebSocketResponse ws) m
-
-instance PrimMonad m =>
-         PrimMonad (WithWebSocketT ws x m) where
-  type PrimState (WithWebSocketT ws x m) = PrimState m
-  primitive = lift . primitive
 
 data IsWebSocketRequest ws req where
   IsWebSocketRequest ::
@@ -48,11 +52,19 @@ data IsWebSocketResponse ws req where
     (WebSocketMessage ws req) =>
       ResponseT ws req -> IsWebSocketResponse ws req
 
--- instance (MonadWidget t m, PrimMonad m) =>
---          WithWebSocket ws t (WithWebSocketT ws t m) where
+newtype TagKey = TagKey { unTagKey :: Int }
+  deriving (Show, Eq, Ord, Enum)
+
+type TagMap ws = Map TagKey (SomeRequesterDataKey ws)
+
+-- Similar to the "Some" with additional constaints
+data SomeRequesterDataKey ws where
+  ThisRequesterDataKey ::
+    (WebSocketMessage ws req) =>
+    RequesterDataKey req -> SomeRequesterDataKey ws
 
 getWebSocketResponse
-  :: (WebSocketMessage ws req, Monad m, Reflex t, PrimMonad m)
+  :: (WebSocketMessage ws req, Monad m, Reflex t)
   => Event t req -> WithWebSocketT ws t m (Event t (ResponseT ws req))
 getWebSocketResponse req = do
   resp <- requesting $ getWS <$> req
@@ -62,7 +74,7 @@ getWebSocketResponse req = do
     getWS req = IsWebSocketRequest (toSum req)
 
 withWSConnection ::
-  (MonadWidget t m, PrimState m ~ RealWorld)
+  (MonadWidget t m)
   => Text -- URL
   -> Event t (Word, Text) -- close event
   -> Bool -- reconnect
@@ -76,10 +88,10 @@ withWSConnection url closeEv reconnect wdgt = do
     (val, reqEvMap) <- runRequesterT wdgt respEvMap
 
     let
-      bsAndMapEv = getRequestBS reqEvMap
       sendEv = fst <$> bsAndMapEv
       conf = WebSocketConfig sendEv closeEv reconnect
 
+      bsAndMapEv = getRequestBS <$> attachPromptlyDyn tagsDyn reqEvMap
     tagsDyn <- foldDyn (<>) Map.empty (snd <$> bsAndMapEv)
     ws <- webSocket url conf
   return (val, ws)
@@ -87,66 +99,60 @@ withWSConnection url closeEv reconnect wdgt = do
 -- Code to encode and decode the messages
 -----------------------------------------
 
-type TagMap ws = Map String (SomeTag ws (Tag RealWorld))
-type EncodeM ws = Writer ([ByteString], TagMap ws)
+type EncodeM ws = State ([ByteString], TagMap ws)
 
--- Similar to the "Some" with additional constaints
-data SomeTag ws tag where
-  ThisTag ::
-    (WebSocketMessage ws req) =>
-    !(tag req) -> SomeTag ws tag
-
--- makes a tuple (Tag, Request)
 getRequestBS
-  :: (Reflex t)
-  => Event t (DMap (Tag RealWorld) (IsWebSocketRequest ws))
-  -> Event t ([ByteString], TagMap ws)
-getRequestBS dmapEv = f <$> dmapEv
+  :: (TagMap ws, RequesterData (IsWebSocketRequest ws))
+  -> ([ByteString], TagMap ws)
+getRequestBS (prevTagMap, reqData) =
+  snd $ runState (mapM_ doEncode (requesterDataToList reqData)) ([], prevTagMap)
   where
-    f dmap = snd $ runWriter $ mapM_ doEncode (Data.Dependent.Map.toList dmap)
     doEncode ::
-      DSum (Tag RealWorld) (IsWebSocketRequest ws) -> EncodeM ws ()
-    doEncode (t :=> b@(IsWebSocketRequest a)) = do
+      DSum RequesterDataKey (IsWebSocketRequest ws) -> EncodeM ws ()
+    doEncode (reqKey :=> b@(IsWebSocketRequest a)) = do
+      (s :: ([ByteString], TagMap ws)) <- get
       let
+        lastKey = case (Map.toDescList $ snd s) of
+          [] -> 0
+          (k':_) -> unTagKey $ fst $ k'
+        k = TagKey $ lastKey + 1
+
         encMes :: IsWebSocketRequest ws req -> Value
         encMes (IsWebSocketRequest a) = toJSON a
-      tell
-        -- XXX Here I have used the Show instance of Tag
-        ( [BSL.toStrict $ encode (show t, encMes b)]
-        , Map.singleton (show t) (ThisTag t))
+        bs = BSL.toStrict $ encode (show k, encMes b)
+      modify (\(bsl,m) -> (bs:bsl, Map.insert k (ThisRequesterDataKey reqKey) m))
 
 getResponseFromBS
   :: (Reflex t)
   => Dynamic t (TagMap ws)
   -> Event t ByteString
-  -> Event t (DMap (Tag RealWorld) (IsWebSocketResponse ws))
+  -> Event t (RequesterData (IsWebSocketResponse ws))
 getResponseFromBS tagMap bs = fforMaybe inp decodeBSResponse
   where
     inp = attachPromptlyDyn tagMap bs
 
 decodeBSResponse ::
-  (TagMap ws, ByteString) -> Maybe (DMap (Tag RealWorld) (IsWebSocketResponse ws))
+  (TagMap ws, ByteString) -> Maybe (RequesterData (IsWebSocketResponse ws))
 decodeBSResponse (tagMap,bs) = join $ join $ decodeValue <$> decodeTag
   where
-    -- Decode Tag first to String
+    -- Decode Tag first
     decodeTag =
       case decodeStrict bs of
-        Nothing -> Nothing :: Maybe (String, Value)
-        Just (str, rst) -> Just (str, rst)
+        Nothing -> Nothing :: Maybe (TagKey, Value)
+        Just (val, rst) -> Just (TagKey val, rst)
 
     -- Given the tag, decode the rest of value
-    decodeValue (str, rst) = f <$> t
+    decodeValue (tagMapKey, rst) = f <$> t
       where
-        -- t :: Maybe (SomeTag ws (Tag RealWorld))
-        t = Map.lookup str tagMap
-        f (ThisTag t') = decodeValue2 rst t'
+        t = Map.lookup tagMapKey tagMap
+        f (ThisRequesterDataKey t') = decodeValue2 rst t'
 
     decodeValue2
       :: (WebSocketMessage ws req)
       => Value
-      -> Tag RealWorld req
-      -> Maybe (DMap (Tag RealWorld) (IsWebSocketResponse ws))
-    decodeValue2 bs t =
+      -> RequesterDataKey req
+      -> Maybe (RequesterData (IsWebSocketResponse ws))
+    decodeValue2 bs reqKey =
       case fromJSON bs of
         Error _ -> Nothing
-        Success v -> Just (Data.Dependent.Map.singleton t (IsWebSocketResponse v))
+        Success v -> Just (singletonRequesterData reqKey (IsWebSocketResponse v))
