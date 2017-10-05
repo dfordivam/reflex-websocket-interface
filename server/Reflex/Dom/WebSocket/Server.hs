@@ -77,7 +77,7 @@ handleRequestInternal _ handler bstr =
   case decodeStrict bstr of
     (Just (v, r)) -> do
       resp <- getResponse r
-      return $ toStrict $ encode $ (v :: String, resp)
+      return $ toStrict $ encode $ (v :: Int, resp)
     _ -> error "Cannot decode request"
 
   where

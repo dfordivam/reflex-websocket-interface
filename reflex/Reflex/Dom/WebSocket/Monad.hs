@@ -35,6 +35,8 @@ import Data.Monoid ((<>))
 import qualified Data.Map.Strict as Map
 import Data.ByteString
 import Data.Text (Text)
+import Data.Align
+import Data.These
 import qualified Data.ByteString.Lazy as BSL
 
 import Control.Monad.State.Strict
@@ -53,7 +55,7 @@ data IsWebSocketResponse ws req where
       ResponseT ws req -> IsWebSocketResponse ws req
 
 newtype TagKey = TagKey { unTagKey :: Int }
-  deriving (Show, Eq, Ord, Enum)
+  deriving (Show, Eq, Ord, Enum, ToJSON, FromJSON)
 
 type TagMap ws = Map TagKey (SomeRequesterDataKey ws)
 
@@ -74,25 +76,37 @@ getWebSocketResponse req = do
     getWS req = IsWebSocketRequest (toSum req)
 
 withWSConnection ::
-  (MonadWidget t m)
+  forall t m ws a . MonadWidget t m
   => Text -- URL
   -> Event t (Word, Text) -- close event
   -> Bool -- reconnect
   -> WithWebSocketT ws t m a
   -> m (a, Reflex.Dom.WebSocket t)
 withWSConnection url closeEv reconnect wdgt = do
+  let
+      foldFun :: These (TagMap ws) (TagMap ws) -> TagMap ws -> TagMap ws
+      foldFun (This r) m = Map.difference m r
+      foldFun (That a) m = Map.union m a
+      foldFun (These r a) m = Map.difference (Map.union m a) r
+
   rec
+
     let
       respEvMap = getResponseFromBS tagsDyn (_webSocket_recv ws)
 
-    (val, reqEvMap) <- runRequesterT wdgt respEvMap
+    (val, reqEvMap) <- runRequesterT wdgt (snd <$> respEvMap)
 
     let
+      sendEv :: Event t [ByteString]
       sendEv = fst <$> bsAndMapEv
       conf = WebSocketConfig sendEv closeEv reconnect
 
-      bsAndMapEv = getRequestBS <$> attachPromptlyDyn tagsDyn reqEvMap
-    tagsDyn <- foldDyn (<>) Map.empty (snd <$> bsAndMapEv)
+      bsAndMapEv = getRequestBS <$> attach (current tagsDyn) reqEvMap
+      removeKeyEv = fst <$> respEvMap
+      addKeyEv = snd <$> bsAndMapEv
+      keyEv = align removeKeyEv addKeyEv
+
+    tagsDyn <- foldDyn foldFun Map.empty keyEv
     ws <- webSocket url conf
   return (val, ws)
 
@@ -119,40 +133,42 @@ getRequestBS (prevTagMap, reqData) =
 
         encMes :: IsWebSocketRequest ws req -> Value
         encMes (IsWebSocketRequest a) = toJSON a
-        bs = BSL.toStrict $ encode (show k, encMes b)
+        bs = BSL.toStrict $ encode (k, encMes b)
       modify (\(bsl,m) -> (bs:bsl, Map.insert k (ThisRequesterDataKey reqKey) m))
 
 getResponseFromBS
   :: (Reflex t)
   => Dynamic t (TagMap ws)
   -> Event t ByteString
-  -> Event t (RequesterData (IsWebSocketResponse ws))
+  -> Event t (TagMap ws, RequesterData (IsWebSocketResponse ws))
 getResponseFromBS tagMap bs = fforMaybe inp decodeBSResponse
   where
-    inp = attachPromptlyDyn tagMap bs
+    inp = attach (current tagMap) bs
 
 decodeBSResponse ::
-  (TagMap ws, ByteString) -> Maybe (RequesterData (IsWebSocketResponse ws))
+  (TagMap ws, ByteString) -> Maybe (TagMap ws, RequesterData (IsWebSocketResponse ws))
 decodeBSResponse (tagMap,bs) = join $ join $ decodeValue <$> decodeTag
   where
     -- Decode Tag first
     decodeTag =
       case decodeStrict bs of
         Nothing -> Nothing :: Maybe (TagKey, Value)
-        Just (val, rst) -> Just (TagKey val, rst)
+        Just (val, rst) -> Just (val, rst)
 
     -- Given the tag, decode the rest of value
     decodeValue (tagMapKey, rst) = f <$> t
       where
         t = Map.lookup tagMapKey tagMap
-        f (ThisRequesterDataKey t') = decodeValue2 rst t'
+        f (ThisRequesterDataKey t') = decodeValue2 tagMapKey rst t'
 
     decodeValue2
       :: (WebSocketMessage ws req)
-      => Value
+      => TagKey
+      -> Value
       -> RequesterDataKey req
-      -> Maybe (RequesterData (IsWebSocketResponse ws))
-    decodeValue2 bs reqKey =
+      -> Maybe (TagMap ws, RequesterData (IsWebSocketResponse ws))
+    decodeValue2 tagKey bs reqKey =
       case fromJSON bs of
         Error _ -> Nothing
-        Success v -> Just (singletonRequesterData reqKey (IsWebSocketResponse v))
+        Success v -> Just (Map.singleton tagKey $ ThisRequesterDataKey reqKey,
+                           singletonRequesterData reqKey (IsWebSocketResponse v))
