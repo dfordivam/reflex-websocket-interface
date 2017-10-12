@@ -1,12 +1,13 @@
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- The reflex side code need to do the following
 -- 1. Capture all the Requent events
@@ -15,35 +16,40 @@
 --
 -- We need the tag to
 --   a. Decode the response ie get the type of the response
---      - 
+--      -
 --   b. send the response to the origin of request
 --      - For this we need to store the RequesterDataKey
 
 module Reflex.Dom.WebSocket.Monad
   ( withWSConnection
   , WithWebSocketT
+  , HasWebSocket
+  , IsWebSocketRequest(..)
+  , IsWebSocketResponse(..)
   , getWebSocketResponse
   ) where
 
 import Reflex.Dom.WebSocket.Message
 
-import Reflex.Dom.Core hiding (WebSocket,Value, Error)
-import qualified Reflex.Dom.Core as Reflex.Dom
+import Data.Align
+import Data.ByteString
+import qualified Data.ByteString.Lazy as BSL
 import Data.Dependent.Sum
 import Data.Map.Strict (Map)
-import Data.Monoid ((<>))
 import qualified Data.Map.Strict as Map
-import Data.ByteString
+import Data.Monoid ((<>))
 import Data.Text (Text)
-import Data.Align
 import Data.These
-import qualified Data.ByteString.Lazy as BSL
+import Reflex.Dom.Core hiding (Error, Value, WebSocket)
+import qualified Reflex.Dom.Core as Reflex.Dom
 
 import Control.Monad.State.Strict
 
 import Data.Aeson
 
 type WithWebSocketT ws t m = RequesterT t (IsWebSocketRequest ws) (IsWebSocketResponse ws) m
+
+type HasWebSocket t msg m = (Requester t m, Request m ~ IsWebSocketRequest msg, Response m ~ IsWebSocketResponse msg)
 
 data IsWebSocketRequest ws req where
   IsWebSocketRequest ::
@@ -66,8 +72,8 @@ data SomeRequesterDataKey ws where
     RequesterDataKey req -> SomeRequesterDataKey ws
 
 getWebSocketResponse
-  :: (WebSocketMessage ws req, Monad m, Reflex t)
-  => Event t req -> WithWebSocketT ws t m (Event t (ResponseT ws req))
+  :: (WebSocketMessage ws req, HasWebSocket t ws m)
+  => Event t req -> m (Event t (ResponseT ws req))
 getWebSocketResponse req = do
   resp <- requesting $ getWS <$> req
   return $ (\(IsWebSocketResponse b) -> b) <$> resp
@@ -85,8 +91,8 @@ withWSConnection ::
 withWSConnection url closeEv reconnect wdgt = do
   let
       foldFun :: These (TagMap ws) (TagMap ws) -> TagMap ws -> TagMap ws
-      foldFun (This r) m = Map.difference m r
-      foldFun (That a) m = Map.union m a
+      foldFun (This r) m    = Map.difference m r
+      foldFun (That a) m    = Map.union m a
       foldFun (These r a) m = Map.difference (Map.union m a) r
 
   rec
@@ -127,7 +133,7 @@ getRequestBS (prevTagMap, reqData) =
       (s :: ([ByteString], TagMap ws)) <- get
       let
         lastKey = case (Map.toDescList $ snd s) of
-          [] -> 0
+          []     -> 0
           (k':_) -> unTagKey $ fst $ k'
         k = TagKey $ lastKey + 1
 
@@ -152,7 +158,7 @@ decodeBSResponse (tagMap,bs) = join $ join $ decodeValue <$> decodeTag
     -- Decode Tag first
     decodeTag =
       case decodeStrict bs of
-        Nothing -> Nothing :: Maybe (TagKey, Value)
+        Nothing         -> Nothing :: Maybe (TagKey, Value)
         Just (val, rst) -> Just (val, rst)
 
     -- Given the tag, decode the rest of value
