@@ -7,7 +7,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
-module PushShared where
+module Shared where
 
 import Reflex.Dom.WebSocket.Message
 
@@ -15,24 +15,22 @@ import GHC.Generics
 import Data.Aeson
 import Data.Text
 
-type Request = RequestWrapper
+type Request = WebSocketRequestWrapper NormalRequest PushRequest
   -- Normal requests
-  (Request1 :<|> Request2 :<|> Request3)
+type NormalRequest = (Request1 :<|> Request2 :<|> RequestCommon)
   -- Push based requests
-  (Request4 :<|> Request5 :<|> Request6)
+type PushRequest = (Request4 :<|> Request5 :<|> RequestCommon)
 
 data Request1 = Request1 Text
   deriving (Generic, Show, ToJSON, FromJSON)
 data Request2 = Request2 (Text, Text)
   deriving (Generic, Show, ToJSON, FromJSON)
-data Request3 = Request3 [Text]
+data RequestCommon = RequestCommon [Text]
   deriving (Generic, Show, ToJSON, FromJSON)
 
 data Request4 = Request4 Text
   deriving (Generic, Show, ToJSON, FromJSON)
 data Request5 = Request5 (Text, Text)
-  deriving (Generic, Show, ToJSON, FromJSON)
-data Request6 = Request6 [Text]
   deriving (Generic, Show, ToJSON, FromJSON)
 
 data Response1 = Response1 Int
@@ -49,20 +47,20 @@ data Response5 = Response5 Text
 data Response6 = Response (Text, Int)
   deriving (Generic, Show, ToJSON, FromJSON)
 
-instance WebSocketMessage Request Request1 where
-  type ResponseT Request Request1 = Response1
+instance WebSocketMessage NormalRequest Request1 where
+  type ResponseT NormalRequest Request1 = Response1
 
-instance WebSocketMessage Request Request2 where
-  type ResponseT Request Request2 = Response2
+instance WebSocketMessage NormalRequest Request2 where
+  type ResponseT NormalRequest Request2 = Response2
 
-instance WebSocketMessage Request Request3 where
-  type ResponseT Request Request3 = Response3
+instance WebSocketMessage NormalRequest RequestCommon where
+  type ResponseT NormalRequest RequestCommon = Response3
 
-instance WebSocketMessage Request Request4 where
-  type ResponseT Request Request4 = Response4
+instance WebSocketMessage PushRequest Request4 where
+  type ResponseT PushRequest Request4 = Response4
 
-instance WebSocketMessage Request Request5 where
-  type ResponseT Request Request5 = Response5
+instance WebSocketMessage PushRequest Request5 where
+  type ResponseT PushRequest Request5 = Response5
 
-instance WebSocketMessage Request Request6 where
-  type ResponseT Request Request6 = Response6
+instance WebSocketMessage PushRequest RequestCommon where
+  type ResponseT PushRequest RequestCommon = Response6

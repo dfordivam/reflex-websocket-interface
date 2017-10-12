@@ -6,8 +6,8 @@ let
 
   inherit (nixpkgs) pkgs;
 
-  reflex-websocket-interface-shared = ghc.callPackage ../../shared {};
-  reflex-websocket-interface-server = ghc.callPackage ../../server {
+  reflex-websocket-interface-shared = ghc.callPackage ../../../shared {};
+  reflex-websocket-interface-server = ghc.callPackage ../../../server {
     inherit reflex-websocket-interface-shared;};
   drv = ghc.callPackage ./default.nix {
     inherit reflex-websocket-interface-shared reflex-websocket-interface-server;

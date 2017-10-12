@@ -5,13 +5,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 
-module PushMain where
+module Main where
 
 import Reflex.Dom.WebSocket.Server
 import Reflex.Dom.WebSocket.Message
 import qualified Data.Text as T
 import Data.Monoid
-import PushShared
+import Shared
 import Network.WebSockets
 
 main :: IO ()

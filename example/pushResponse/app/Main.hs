@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module PushMain where
+module Main where
 
 import Reflex.Dom.Core
 import Control.Monad.IO.Class
@@ -16,7 +16,7 @@ import qualified Data.Text as T
 import Data.Monoid
 
 -- Example Code
-import PushShared
+import Shared
 
 codeToRun
   :: (MonadWidget t m)
