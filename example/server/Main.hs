@@ -33,6 +33,7 @@ handler = HandlerWrapper $
   h getResp1
   :<&> h getResp2
   :<&> h getResp3
+  :<&> h getResp4
   where
     h :: (WebSocketMessage Shared.Request a, Monad m)
       => (a -> m (ResponseT Shared.Request a))
@@ -47,3 +48,6 @@ getResp2 (Request2 (t1,t2)) = return $ Response2 (t1 <> t2)
 
 getResp3 :: Request3 -> IO Response3
 getResp3 (Request3 ts) = return $ Response3 ("Length", length ts)
+
+getResp4 :: Request4 -> IO Response1
+getResp4 (Request4 t) = return $ Response1 (T.length t)

@@ -27,6 +27,10 @@ codeToRun = do
   respEv1 <- getWebSocketResponse (Request1 <$> tagPromptlyDyn (value ti1) ev1)
   widgetHold (text "Waiting for Response1")
     ((\(Response1 l) -> text ("Length is: " <> T.pack (show l))) <$> respEv1)
+
+  respEv4 <- getWebSocketResponse (Request4 <$> tagPromptlyDyn (value ti1) ev1)
+  widgetHold (text "Waiting for Response1 for 4")
+    ((\(Response1 l) -> text ("Length is: " <> T.pack (show l))) <$> respEv4)
   ev2 <- button "Request2"
   ti2 <- textInput def
   respEv2 <- getWebSocketResponse (Request2 <$> tagPromptlyDyn (zipDyn (value ti1) (value ti2)) ev2)
