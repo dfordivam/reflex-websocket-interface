@@ -29,6 +29,8 @@ class ( ToJSON sum
       , FromJSON sum
       , ToJSON (ResponseT sum req)
       , FromJSON (ResponseT sum req)
+      , Show req
+      , Show (ResponseT sum req)
       , ToSumType sum req
       ) =>
       WebSocketMessage sum req where

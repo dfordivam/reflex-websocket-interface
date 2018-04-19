@@ -21,11 +21,14 @@ app c = do
   conn <- acceptRequest c
   let loop = do
         d <- receiveData conn
-        print d
-        resp <- handleRequest handler d
-        print resp
+        resp <- handleRequest handler (\a b -> liftIO (showF a b)) d
         sendBinaryData conn resp
         loop
+
+      showF :: (Show a, Show b) => a -> b -> IO ()
+      showF a b = do
+        putStrLn $ "Request: " ++ (show a)
+        putStrLn $ "Response: " ++ (show b)
   loop
 
 handler :: HandlerWrapper IO Shared.Request

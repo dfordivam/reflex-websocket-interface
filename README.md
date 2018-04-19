@@ -125,7 +125,8 @@ See the code in example folder for more details.
 
    ```
    -- resp :: Bytestring
-   resp <- handleRequest handler bsRecieved
+   -- showF :: (Show a, Show b) => a -> b -> m ()
+   resp <- handleRequest handler showF bsRecieved
    ```
 
 Here I have used the aeson package for serialisation. To use some other serialisation package the library code will need slight modifications, but should work.

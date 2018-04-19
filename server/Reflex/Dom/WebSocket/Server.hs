@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 
 module Reflex.Dom.WebSocket.Server
@@ -38,18 +39,24 @@ data Handler m req a where
     req -> (a -> m (ResponseT req a )) -> Handler m req a
 
 class IsValidHandler m req r h where
-  runHandlerRec :: req -> r -> h -> m Value
+  runHandlerRec :: req -> (forall a b . (Show a, Show b) => a -> b -> m ()) -> r -> h -> m Value
 
 instance (WebSocketMessage req a
   , IsValidHandler m req b c) => IsValidHandler m req (a :<|> b) ((Handler m req a) :<&> c) where
-  runHandlerRec req (Terminal a) ((Handler _ h) :<&> _) = h a >>= (\x -> return $ toJSON x)
-  runHandlerRec req (Recurse b) (_ :<&> c) = runHandlerRec req b c
+  runHandlerRec req showF (Terminal a) ((Handler _ h) :<&> _) = h a >>= (\b -> (showF a b) >> return (toJSON b))
+  runHandlerRec req showF (Recurse b) (_ :<&> c) = runHandlerRec req showF b c
 
 instance (WebSocketMessage req a) => IsValidHandler m req a (Handler m req a) where
-  runHandlerRec req a (Handler _ h) = h a >>= (\x -> return $ toJSON x)
+  runHandlerRec req showF a (Handler _ h) = h a >>= (\b -> do
+                                                        showF a b
+                                                        return (toJSON b))
 
-runHandler :: (IsValidHandler m req req h) => req -> h -> m Value
-runHandler req h = runHandlerRec req req h
+runHandler :: (IsValidHandler m req req h)
+  => req
+  -> h
+  -> (forall a b . (Show a, Show b) => a -> b -> m ())
+  -> m Value
+runHandler req h showF = runHandlerRec req showF req h
 
 makeHandler
   :: (WebSocketMessage req a, Monad m)
@@ -64,7 +71,10 @@ data HandlerWrapper m req where
 handleRequest
   :: forall m req.
      (FromJSON req, Monad m)
-  => HandlerWrapper m req -> ByteString -> m ByteString
+  => HandlerWrapper m req
+  -> (forall a b . (Show a, Show b) => a -> b -> m ())
+  -> ByteString
+  -> m ByteString
 handleRequest (HandlerWrapper h) = handleRequestInternal req h
   where req :: (FromJSON req) => req
         req = undefined
@@ -72,8 +82,12 @@ handleRequest (HandlerWrapper h) = handleRequestInternal req h
 handleRequestInternal
   :: forall m req h.
      (FromJSON req, Monad m, IsValidHandler m req req h)
-  => req -> h -> ByteString -> m ByteString
-handleRequestInternal _ handler bstr =
+  => req
+  -> h
+  -> (forall a b . (Show a, Show b) => a -> b -> m ())
+  -> ByteString
+  -> m ByteString
+handleRequestInternal _ handler showF bstr =
   case decodeStrict bstr of
     (Just (v, r)) -> do
       resp <- getResponse r
@@ -82,4 +96,4 @@ handleRequestInternal _ handler bstr =
 
   where
     getResponse :: (Monad m) => req -> m Value
-    getResponse r = runHandler r handler
+    getResponse r = runHandler r handler showF
