@@ -105,7 +105,7 @@ withWSConnection url closeEv reconnect wdgt = do
     let
       sendEv :: Event t [ByteString]
       sendEv = fst <$> bsAndMapEv
-      conf = WebSocketConfig sendEv closeEv reconnect
+      conf = WebSocketConfig sendEv closeEv reconnect []
 
       bsAndMapEv = getRequestBS <$> attach (current tagsDyn) reqEvMap
       removeKeyEv = fst <$> respEvMap
