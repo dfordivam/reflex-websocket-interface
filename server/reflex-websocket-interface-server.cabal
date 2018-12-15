@@ -16,7 +16,7 @@ library
   exposed-modules:     Reflex.Dom.WebSocket.Server
   -- other-modules:
   other-extensions:    TypeOperators, MultiParamTypeClasses, GADTs
-  build-depends:       base >=4.9 && <4.10
+  build-depends:       base >=4.9 && <5
                       , aeson
                       , bytestring
                       , reflex-websocket-interface-shared
