@@ -22,9 +22,10 @@ library
     , text
     , reflex
     , reflex-dom-core
+    , bytestring
     , dependent-map
     , dependent-sum
-    , bytestring
+    , ghcjs-dom
     , aeson
     , mtl
     , primitive
