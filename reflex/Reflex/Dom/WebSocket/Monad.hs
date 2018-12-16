@@ -88,8 +88,8 @@ withWSConnection :: forall t m ws a.
   => Text -- URL
   -> Event t (Word, Text) -- close event
   -> Bool -- reconnect
-  -> WithWebSocketT ws t m ByteString
-  -> m (ByteString, Reflex.Dom.WebSocket t)
+  -> WithWebSocketT ws t m a
+  -> m (a, Reflex.Dom.WebSocket t)
 withWSConnection url closeEv reconnect wdgt = do
   let
       foldFun :: These (TagMap ws) (TagMap ws) -> TagMap ws -> TagMap ws
