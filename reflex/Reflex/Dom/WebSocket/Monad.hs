@@ -31,6 +31,9 @@ module Reflex.Dom.WebSocket.Monad
 
 import Reflex.Dom.WebSocket.Message
 
+import Control.Monad.Fix (MonadFix)
+import Control.Monad.State.Strict
+import Data.Aeson
 import Data.Align
 import Data.ByteString
 import qualified Data.ByteString.Lazy as BSL
@@ -40,12 +43,9 @@ import qualified Data.Map.Strict as Map
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import Data.These
+import GHCJS.DOM.Types (MonadJSM)
 import Reflex.Dom.Core hiding (Error, Value, WebSocket)
 import qualified Reflex.Dom.Core as Reflex.Dom
-
-import Control.Monad.State.Strict
-
-import Data.Aeson
 
 type WithWebSocketT ws t m = RequesterT t (IsWebSocketRequest ws) (IsWebSocketResponse ws) m
 
@@ -81,8 +81,10 @@ getWebSocketResponse req = do
     getWS :: (WebSocketMessage ws req) => req -> IsWebSocketRequest ws req
     getWS req = IsWebSocketRequest (toSum req)
 
-withWSConnection ::
-  forall t m ws a . MonadWidget t m
+withWSConnection :: forall t m ws a.
+  ( Reflex t, Monad m, MonadHold t m, MonadFix m
+  , HasJSContext m, MonadJSM m, MonadJSM (Performable m)
+  , PerformEvent t m, PostBuild t m, TriggerEvent t m )
   => Text -- URL
   -> Event t (Word, Text) -- close event
   -> Bool -- reconnect
@@ -96,10 +98,8 @@ withWSConnection url closeEv reconnect wdgt = do
       foldFun (These r a) m = Map.difference (Map.union m a) r
 
   rec
-
     let
       respEvMap = getResponseFromBS tagsDyn (_webSocket_recv ws)
-
     (val, reqEvMap) <- runRequesterT wdgt (snd <$> respEvMap)
 
     let

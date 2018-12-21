@@ -8,7 +8,7 @@ Uses type operators and `Generic` to create the request sum type, and  avoid wri
 
 `type Request = Request1 :<|> Request2 :<|> Request3`
 
-```
+```haskell
 -- Well almost... see below for exact usage
 handler = handleRequest1 :<&> handleRequest2 :<&> handleRequest3
 ```
@@ -43,7 +43,7 @@ See the code in example folder for more details.
    The collection of all websocket requests which can happen over a single connection are grouped together using the type operator (:<|>).
    In the rest of document this type is called referred as the request-type.
 
-   ```
+   ```haskell
    type Request = Request1 :<|> Request2 :<|> Request3
 
    data Request1 = Request1 Text
@@ -59,12 +59,11 @@ See the code in example folder for more details.
      deriving (Generic, Show)
    data Response3 = Response3 (Text, Int)
      deriving (Generic, Show)
-
    ```
 
    Next specify the WebSocketMessage instances for each of individual requests contained in the request-type
 
-   ```
+   ```haskell
    instance WebSocketMessage Request Request1 where
      type ResponseT Request Request1 = Response1
 
@@ -81,7 +80,7 @@ See the code in example folder for more details.
 
    Use the `getWebSocketResponse` API along with the other DomBuilder code to create the widget in the `WithWebSocketT` monad.
 
-   ```
+   ```haskell
      -- req1 :: Event t Request1
      -- respEv1 :: Event t Response1
      respEv1 <- getWebSocketResponse req1
@@ -89,7 +88,7 @@ See the code in example folder for more details.
 
    and specify this widget in `withWSConnection` API along with the websocket url to run the widget using the websocket connection.
 
-   ```
+   ```haskell
      (retVal,wsConn) <- withWSConnection
         url wsCloseEvent doRecconectBool widgetCode
    ```
@@ -100,7 +99,7 @@ See the code in example folder for more details.
 
    Specify all the handlers like this (m can be any monad, Use Identity monad if the handler code is pure)
 
-   ```
+   ```haskell
    handleRequest1 :: (Monad m) => Request1 -> m Response1
    handleRequest2 :: (Monad m) => Request2 -> m Response2
    ```
@@ -108,7 +107,7 @@ See the code in example folder for more details.
    Create a main handler using all the individual handler using the type operator (:<&>) and the makeHandler API.
    You need to specify the request-type explicitly in the HandlerWrapper and makeHandler like this
 
-   ```
+   ```haskell
    handler :: HandlerWrapper IO Request
    handler = HandlerWrapper $
      h handleRequest1
@@ -123,7 +122,7 @@ See the code in example folder for more details.
    Use this handler in the handleRequest API, also specify the bytestring received from the websocket connection.
    This API will run the appropriate handler based on the request type and encode the response back in bytestring.
 
-   ```
+   ```haskell
    -- resp :: Bytestring
    -- showF :: (Show a, Show b) => a -> b -> m ()
    resp <- handleRequest handler showF bsRecieved
