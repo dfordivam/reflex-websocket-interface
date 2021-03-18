@@ -1,3 +1,5 @@
+# Consider using https://github.com/reflex-frp/reflex-gadt-api which implements websockets + XHR
+
 # Websocket Interface for Reflex applications
 
 This repository consists of three packages to be used together, along with reflex as Dom builder, to do websocket communication.
